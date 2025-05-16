@@ -3,7 +3,6 @@ const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const serverless = require("serverless-http");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
@@ -166,5 +165,8 @@ app.post('/getcart', fetchuser, async (req, res) => {
   res.json(user.cartData);
 });
 
-// Export as serverless function
-module.exports = serverless(app);
+
+
+app.listen(process.env.PORT || 4000, () => {
+  console.log("Server is running on port", process.env.PORT || 4000);
+});
