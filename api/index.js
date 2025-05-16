@@ -16,7 +16,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Cloudinary config
+// Cloudinary configuration
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -33,7 +33,13 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage });
 
-// MongoDB models
+// MongoDB connection
+mongoose.connect(process.env.MONGODB_URL, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+// Models
 const Users = mongoose.model("Users", {
   name: String,
   email: { type: String, unique: true },
@@ -51,18 +57,14 @@ const Product = mongoose.model("Product", {
   new_price: Number,
   old_price: Number,
   date: { type: Date, default: Date.now },
-  avilable: { type: Boolean, default: true },
+  available: { type: Boolean, default: true },
 });
 
-// Connect to MongoDB (reused in serverless)
-mongoose.connect(process.env.MONGODB_URL)
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => console.error("❌ MongoDB Error:", err.message));
-
-// JWT middleware
-const fetchuser = async (req, res, next) => {
+// Authentication middleware
+const fetchUser = async (req, res, next) => {
   const token = req.header("auth-token");
-  if (!token) return res.status(401).send({ errors: "Please authenticate using a valid token" });
+  if (!token)
+    return res.status(401).send({ errors: "Please authenticate using a valid token" });
 
   try {
     const data = jwt.verify(token, "secret_ecom");
@@ -87,7 +89,8 @@ app.post("/login", async (req, res) => {
 
 app.post("/signup", async (req, res) => {
   const existing = await Users.findOne({ email: req.body.email });
-  if (existing) return res.status(400).json({ success: false, errors: "Email already in use" });
+  if (existing)
+    return res.status(400).json({ success: false, errors: "Email already in use" });
 
   const cart = Object.fromEntries(Array.from({ length: 300 }, (_, i) => [i, 0]));
 
@@ -148,14 +151,14 @@ app.post("/removeproduct", async (req, res) => {
   res.json({ success: true });
 });
 
-app.post("/addtocart", fetchuser, async (req, res) => {
+app.post("/addtocart", fetchUser, async (req, res) => {
   const user = await Users.findById(req.user.id);
   user.cartData[req.body.itemId] += 1;
   await user.save();
   res.send("Added");
 });
 
-app.post("/removefromcart", fetchuser, async (req, res) => {
+app.post("/removefromcart", fetchUser, async (req, res) => {
   const user = await Users.findById(req.user.id);
   if (user.cartData[req.body.itemId] > 0) {
     user.cartData[req.body.itemId] -= 1;
@@ -164,7 +167,7 @@ app.post("/removefromcart", fetchuser, async (req, res) => {
   res.send("Removed");
 });
 
-app.post("/getcart", fetchuser, async (req, res) => {
+app.post("/getcart", fetchUser, async (req, res) => {
   const user = await Users.findById(req.user.id);
   res.json(user.cartData);
 });
